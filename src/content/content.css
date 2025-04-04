@@ -1,0 +1,32 @@
+/* Tailwind utility classes for the content banner */
+.yt-intention-banner {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  background-color: rgb(220, 38, 38);
+  color: white;
+  padding: 0.5rem 1rem;
+  z-index: 9999;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: 'Roboto', sans-serif;
+  font-size: 14px;
+}
+
+.yt-intention-text {
+  flex-grow: 1;
+}
+
+.yt-intention-clear {
+  background-color: white;
+  color: rgb(220, 38, 38);
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+  font-size: 12px;
+  cursor: pointer;
+  font-weight: 500;
+  border: none;
+  margin-left: 8px;
+} 

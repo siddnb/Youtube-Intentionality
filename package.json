@@ -1,0 +1,25 @@
+{
+  "name": "youtube-intentionality",
+  "version": "1.0.0",
+  "description": "A Chrome extension to enhance YouTube browsing experience",
+  "main": "src/service_worker/service-worker.js",
+  "scripts": {
+    "build:css": "tailwindcss -i ./src/assets/tailwind.css -o ./src/popup/popup.css",
+    "watch:css": "tailwindcss -i ./src/assets/tailwind.css -o ./src/popup/popup.css --watch",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "chrome-extension",
+    "youtube"
+  ],
+  "author": "Siddhantha Bose",
+  "license": "MIT",
+  "devDependencies": {
+    "autoprefixer": "^10.4.14",
+    "postcss": "^8.5.3",
+    "tailwindcss": "^3.4.17"
+  },
+  "dependencies": {
+    "@tailwindcss/postcss": "^4.1.2"
+  }
+}
