@@ -1,32 +1,105 @@
-/* Tailwind utility classes for the content banner */
-.yt-intention-banner {
+/* Blocking overlay styles */
+.yt-blocking-overlay {
   position: fixed;
   top: 0;
   left: 0;
   width: 100%;
-  background-color: rgb(220, 38, 38);
-  color: white;
-  padding: 0.5rem 1rem;
-  z-index: 9999;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.75);
   display: flex;
-  justify-content: space-between;
+  justify-content: center;
   align-items: center;
+  z-index: 10000;
   font-family: 'Roboto', sans-serif;
-  font-size: 14px;
+  padding: 2rem;
+  transition: opacity 300ms ease-in-out;
 }
 
-.yt-intention-text {
-  flex-grow: 1;
+/* Body style to prevent scrolling when overlay is active */
+body.yt-no-scroll {
+  overflow: hidden !important;
+  height: 100% !important;
+  width: 100% !important;
+  position: fixed !important;
 }
 
-.yt-intention-clear {
+/* Container - modal background and box */
+.yt-overlay-container {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
   background-color: white;
-  color: rgb(220, 38, 38);
-  padding: 0.25rem 0.5rem;
-  border-radius: 0.25rem;
-  font-size: 12px;
-  cursor: pointer;
-  font-weight: 500;
+  padding: 2.5rem 3rem;
+  border-radius: 1.25rem;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+  z-index: 9999;
+  width: 90%;
+  max-width: 550px;
+  text-align: center;
+  font-family: 'Segoe UI', sans-serif;
+}
+
+/* Title */
+.yt-overlay-title {
+  font-size: 2.25rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+  color: #111827; /* Dark gray */
+}
+
+/* Subtitle */
+.yt-overlay-description {
+  font-size: 1.35rem;
+  color: #6b7280; /* Muted gray */
+  margin-bottom: 2rem;
+  line-height: 1.5;
+}
+
+/* Input and button container */
+.yt-overlay-input-container {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+/* Input */
+.yt-overlay-input {
+  flex-grow: 1;
+  padding: 1rem 1.5rem;
+  border: 2px solid #d1d5db; /* Light border */
+  border-radius: 4em; /* Fully oval shape */
+  font-size: 1.2rem;
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.yt-overlay-input:focus {
+  border-color: #3b82f6; /* Blue */
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3); /* Blue glow */
+}
+
+/* Submit button */
+.yt-overlay-button {
+  background-color: #3b82f6; /* Blue */
+  color: white;
+  padding: 1rem 1.75rem;
   border: none;
-  margin-left: 8px;
+  border-radius: 4em; /* Fully oval shape */
+  font-size: 1.2rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.yt-overlay-button:hover {
+  background-color: #2563eb; /* Darker blue */
+}
+
+/* Shake animation for validation errors */
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+  20%, 40%, 60%, 80% { transform: translateX(5px); }
 } 
