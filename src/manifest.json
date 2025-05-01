@@ -29,13 +29,13 @@
     {
       "matches": ["*://*.youtube.com/*"],
       "js": ["content/content.js"],
-      "css": ["content/content.css"],
+      "css": ["popup/popup.css", "content/content.css"],
       "run_at": "document_start"
     }
   ],
   "web_accessible_resources": [
     {
-      "resources": ["content/content.css"],
+      "resources": ["content/content.css", "popup/popup.css", "assets/fonts/*"],
       "matches": ["*://*.youtube.com/*"]
     }
   ]

@@ -3,13 +3,31 @@
 <head>
     <title>YouTube Intentionality</title>
     <link rel="stylesheet" type="text/css" href="popup.css">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
-<body class="bg-white p-4 w-80">
-    <div class="flex flex-col gap-4">
-        <h1 class="text-lg font-semibold text-gray-800">YouTube Intentionality</h1>
-        <div id="content" class="py-2">
+<body class="bg-white p-5 w-80">
+    <div class="flex flex-col relative">
+        <!-- <div class="flex justify-between items-center w-full mb-4">
+            <h1 class="text-lg font-semibold text-gray-800">YouTube Intentionality</h1>
+            <button id="settings-icon" class="bg-transparent border-0 p-0 cursor-pointer outline-none focus:outline-none items-center justify-center">
+                <img src="../assets/settings.png"
+                    alt="Settings"
+                    class="max-h-1/4 max-w-1/4 opacity-60 hover:opacity-100 transition-opacity" />
+            </button>
+        </div> -->
+        <div class="flex justify-between items-center w-full mb-4">
+            <h1 class="w-4/5 text-lg font-semibold text-gray-800">YouTube Intentionality</h1>
+            <button id="settings-icon" class="w-1/5 bg-transparent border-0 p-0 cursor-pointer focus:outline-none items-center rounded-full">
+                <img src="../assets/settings.png"
+                    alt="Settings"
+                    />
+            </button>
+        </div>
+        <div id="content" class="w-full">
             <!-- Content will be dynamically added here -->
-
+        </div>
+        <div id="settings-panel" class="w-full">
+            <!-- Settings content will be dynamically added here -->
         </div>
     </div>
     <script src="popup.js"></script>

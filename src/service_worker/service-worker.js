@@ -8,6 +8,9 @@ let youtubeState = {
     expiryTime: null
 };
 
+// Store the current expiry timer
+let expiryTimer = null;
+
 // Listen for installation
 chrome.runtime.onInstalled.addListener(() => {
     console.log('Extension installed or updated');
@@ -22,7 +25,7 @@ chrome.runtime.onStartup.addListener(() => {
 
 // Function to initialize state from storage
 function initializeState() {
-    chrome.storage.local.get(['youtubeIntention', 'youtubeExpiryTime'], (result) => {
+    chrome.storage.local.get(['youtubeIntention', 'youtubeExpiryTime', 'youtubeTimeLimit'], (result) => {
         if (result.youtubeIntention) {
             youtubeState.intention = result.youtubeIntention;
             youtubeState.isBlocked = false;
@@ -34,7 +37,15 @@ function initializeState() {
                 const now = Date.now();
                 if (result.youtubeExpiryTime > now) {
                     const timeToExpiry = result.youtubeExpiryTime - now;
-                    setTimeout(() => {
+                    console.log(`Setting expiry timer for ${timeToExpiry/1000/60} minutes`);
+                    
+                    // Clear any existing timer
+                    if (expiryTimer) {
+                        clearTimeout(expiryTimer);
+                    }
+                    
+                    // Set new timer
+                    expiryTimer = setTimeout(() => {
                         expireIntention();
                     }, timeToExpiry);
                 } else {
@@ -48,20 +59,28 @@ function initializeState() {
 
 // Function to expire an intention
 function expireIntention() {
+    console.log('Expiring intention. Time limit reached.');
+    
     youtubeState.isBlocked = true;
     youtubeState.intention = '';
     youtubeState.expiryTime = null;
+    
+    // Clear timer reference
+    expiryTimer = null;
     
     chrome.storage.local.remove(['youtubeIntention', 'youtubeExpiryTime'], () => {
         console.log('Intention expired and cleared');
         
         // Notify any open YouTube tabs
         chrome.tabs.query({url: "*://*.youtube.com/*"}, (tabs) => {
-            tabs.forEach(tab => {
-                chrome.tabs.sendMessage(tab.id, {
-                    action: 'intentionExpired'
+            if (tabs.length > 0) {
+                console.log(`Notifying ${tabs.length} YouTube tabs about expired intention`);
+                tabs.forEach(tab => {
+                    chrome.tabs.sendMessage(tab.id, {
+                        action: 'intentionExpired'
+                    });
                 });
-            });
+            }
         });
     });
 }
@@ -78,11 +97,24 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         if (request.expiryTime) {
             youtubeState.expiryTime = request.expiryTime;
             
+            // Clear any existing timer
+            if (expiryTimer) {
+                clearTimeout(expiryTimer);
+                expiryTimer = null;
+            }
+            
             // Calculate time until expiry and set timeout
             const timeToExpiry = request.expiryTime - Date.now();
-            setTimeout(() => {
+            
+            if (timeToExpiry > 0) {
+                console.log(`Setting new expiry timer for ${timeToExpiry/1000/60} minutes`);
+                expiryTimer = setTimeout(() => {
+                    expireIntention();
+                }, timeToExpiry);
+            } else {
+                console.log('Expiry time is in the past, expiring immediately');
                 expireIntention();
-            }, timeToExpiry);
+            }
         }
         
         sendResponse({success: true});
@@ -92,9 +124,21 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         youtubeState.intention = '';
         youtubeState.expiryTime = null;
         
+        // Clear any existing timer
+        if (expiryTimer) {
+            clearTimeout(expiryTimer);
+            expiryTimer = null;
+        }
+        
         sendResponse({success: true});
     }
     else if (request.action === 'getState') {
+        // Check if expiry time has passed but the timer hasn't fired yet
+        if (youtubeState.expiryTime && youtubeState.expiryTime < Date.now() && !youtubeState.isBlocked) {
+            console.log('Expiry time passed but state not updated, expiring now');
+            expireIntention();
+        }
+        
         sendResponse(youtubeState);
     }
     
