@@ -57,6 +57,41 @@ function initializeState() {
     });
 }
 
+// Function to pause videos in all YouTube tabs
+function pauseVideosInAllTabs() {
+    chrome.tabs.query({url: "*://*.youtube.com/*"}, (tabs) => {
+        if (tabs.length > 0) {
+            console.log(`Pausing videos in ${tabs.length} YouTube tabs`);
+            tabs.forEach(tab => {
+                // Execute script directly in the tab to pause video
+                chrome.scripting.executeScript({
+                    target: { tabId: tab.id },
+                    function: () => {
+                        const video = document.querySelector('video');
+                        if (video && !video.paused) {
+                            video.pause();
+                            let tries = 0;
+                            const interval = setInterval(() => {
+                                if (!video.paused) {
+                                video.pause();
+                                }
+                                tries++;
+                                if (tries >= 4) clearInterval(interval);
+                            }, 500);
+                            console.log('Video paused due to time expiry');
+                        }
+                    }
+                }).catch(err => console.error(`Failed to execute script in tab ${tab.id}:`, err));
+                
+                // Also send message to content script
+                chrome.tabs.sendMessage(tab.id, {
+                    action: 'intentionExpired'
+                });
+            });
+        }
+    });
+}
+
 // Function to expire an intention
 function expireIntention() {
     console.log('Expiring intention. Time limit reached.');
@@ -71,17 +106,8 @@ function expireIntention() {
     chrome.storage.local.remove(['youtubeIntention', 'youtubeExpiryTime'], () => {
         console.log('Intention expired and cleared');
         
-        // Notify any open YouTube tabs
-        chrome.tabs.query({url: "*://*.youtube.com/*"}, (tabs) => {
-            if (tabs.length > 0) {
-                console.log(`Notifying ${tabs.length} YouTube tabs about expired intention`);
-                tabs.forEach(tab => {
-                    chrome.tabs.sendMessage(tab.id, {
-                        action: 'intentionExpired'
-                    });
-                });
-            }
-        });
+        // Pause videos in all YouTube tabs, even inactive ones
+        pauseVideosInAllTabs();
     });
 }
 
@@ -104,10 +130,10 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             }
             
             // Calculate time until expiry and set timeout
-            const timeToExpiry = request.expiryTime - Date.now();
+            const timeToExpiry = Math.ceil((request.expiryTime - Date.now()) / 60000) * 60000;
             
             if (timeToExpiry > 0) {
-                console.log(`Setting new expiry timer for ${timeToExpiry/1000/60} minutes`);
+                console.log(`Setting new expiry timer for ${timeToExpiry/60000} minutes`);
                 expiryTimer = setTimeout(() => {
                     expireIntention();
                 }, timeToExpiry);

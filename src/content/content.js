@@ -47,11 +47,15 @@ function checkYouTubeState() {
             
             if (isYouTubeBlocked) {
                 // YouTube is blocked, show blocking overlay
+                console.log('Youtube is blocked');
+                pauseVideo();
                 showBlockingOverlay();
             }
         } else {
             // Default to blocked if no response
+            console.log('Defaulting to blocked');
             isYouTubeBlocked = true;
+            pauseVideo();
             showBlockingOverlay();
         }
     });
@@ -62,14 +66,20 @@ function pauseVideo() {
     const video = document.querySelector('video');
     if (video && !video.paused) {
         video.pause();
-        console.log('Video paused due to time expiry');
+        let tries = 0;
+        const interval = setInterval(() => {
+            if (!video.paused) {
+            video.pause();
+            }
+            tries++;
+            if (tries >= 4) clearInterval(interval);
+        }, 500);
+        console.log('Video paused');
     }
 }
 
 // Function to show blocking overlay
 function showBlockingOverlay() {
-    // Pause video if playing
-    pauseVideo();
     
     // Remove existing overlay if it exists
     if (blockingOverlay) {
@@ -96,6 +106,7 @@ function showBlockingOverlay() {
     
     // Add overlay to page
     document.body.appendChild(blockingOverlay);
+    console.log('Blocking overlay added');
 
     // Prevent scrolling of the body
     document.body.classList.add('overflow-hidden', 'h-full', 'w-full', 'fixed');
@@ -125,6 +136,7 @@ function showBlockingOverlay() {
             submitIntention(input.value);
         });
     }
+
 }
 
 // Function to submit intention
@@ -145,7 +157,7 @@ function submitIntention(intention) {
     // Get the time limit from storage
     chrome.storage.local.get(['youtubeTimeLimit'], function(result) {
         const timeLimit = result.youtubeTimeLimit || 30; // Default to 30 minutes
-        const expiryTime = Date.now() + (timeLimit * 60 * 1000);
+        const expiryTime = Date.now() + (timeLimit * 60000);
         
         // Save intention to storage with expiry time
         chrome.storage.local.set({
@@ -200,8 +212,8 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
     } else if (request.action === 'intentionExpired') {
         console.log('Intention expired');
         
-        // Pause video before showing overlay
-        pauseVideo();
+        // // Pause video before showing overlay
+        // pauseVideo();
         
         // Set to blocked and show overlay
         isYouTubeBlocked = true;

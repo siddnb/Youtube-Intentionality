@@ -63,7 +63,10 @@ document.addEventListener('DOMContentLoaded', function() {
         // Format the time
         if (diffHours > 0) {
             return `Expires in ${diffHours}h ${remainingMins}m`;
-        } else {
+        } else if (diffMins == 0 && diffMs > 0) {
+            return `Expires in less than 1 minute`;
+        }
+        else {
             return `Expires in ${remainingMins}m`;
         }
     }
