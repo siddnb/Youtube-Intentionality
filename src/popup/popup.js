@@ -6,13 +6,17 @@ document.addEventListener('DOMContentLoaded', function() {
     const settingsPanel = document.getElementById('settings-panel');
     const settingsIcon = document.getElementById('settings-icon');
     
-    // Default time limit in minutes
+    // Default time limit and cooldown time in minutes
     let timeLimit = 30;
+    let cooldownTime = 2;
     
-    // Load saved time limit if available
-    chrome.storage.local.get(['youtubeTimeLimit'], function(result) {
+    // Load saved settings if available
+    chrome.storage.local.get(['youtubeTimeLimit', 'youtubeCooldownTime'], function(result) {
         if (result.youtubeTimeLimit) {
             timeLimit = result.youtubeTimeLimit;
+        }
+        if (result.youtubeCooldownTime) {
+            cooldownTime = result.youtubeCooldownTime;
         }
     });
     
@@ -79,7 +83,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     <h2 class="text-lg font-semibold text-gray-800 mb-3">Settings</h2>
                     <div class="mb-4">
                         <label for="timeLimit" class="block text-sm font-medium text-gray-700 mb-1">
-                            Time limit (minutes)
+                            Session Length
                         </label>
                         <input 
                             type="number" 
@@ -91,6 +95,22 @@ document.addEventListener('DOMContentLoaded', function() {
                         >
                         <p class="text-sm text-gray-500 mt-1">
                             Length of the session.
+                        </p>
+                    </div>
+                    <div class="mb-4">
+                        <label for="cooldownTime" class="block text-sm font-medium text-gray-700 mb-1">
+                            Cooldown Period
+                        </label>
+                        <input 
+                            type="number" 
+                            id="cooldownTime" 
+                            class="w-full p-2 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50 transition-colors" 
+                            min="1" 
+                            max="120" 
+                            value="${cooldownTime}"
+                        >
+                        <p class="text-sm text-gray-500 mt-1">
+                            Time to wait before next session can start.
                         </p>
                     </div>
                 </div>
@@ -109,18 +129,35 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('saveSettings').addEventListener('click', function() {
             // Get time limit value
             const timeLimitInput = document.getElementById('timeLimit');
-            const newTimeLimit = parseInt(timeLimitInput.value);
+            const cooldownTimeInput = document.getElementById('cooldownTime');
             
-            // Validate input
+            const newTimeLimit = parseInt(timeLimitInput.value);
+            const newCooldownTime = parseInt(cooldownTimeInput.value);
+            
+            // Validate inputs
+            let isValid = true;
+            
             if (isNaN(newTimeLimit) || newTimeLimit < 1) {
                 timeLimitInput.classList.add('border-red-500');
-                return;
+                isValid = false;
             }
             
-            // Save time limit
+            if (isNaN(newCooldownTime) || newCooldownTime < 1) {
+                cooldownTimeInput.classList.add('border-red-500');
+                isValid = false;
+            }
+            
+            if (!isValid) return;
+            
+            // Save settings
             timeLimit = newTimeLimit;
-            chrome.storage.local.set({youtubeTimeLimit: timeLimit}, function() {
-                console.log('Time limit saved:', timeLimit);
+            cooldownTime = newCooldownTime;
+            
+            chrome.storage.local.set({
+                youtubeTimeLimit: timeLimit,
+                youtubeCooldownTime: cooldownTime
+            }, function() {
+                console.log('Settings saved. Time limit:', timeLimit, 'Cooldown time:', cooldownTime);
                 
                 // Return to main panel
                 settingsPanel.style.display = 'none';

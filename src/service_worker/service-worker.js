@@ -5,11 +5,14 @@ console.log('Service Worker initialized');
 let youtubeState = {
     isBlocked: true, // Default to blocked state
     intention: '',
-    expiryTime: null
+    expiryTime: null,
+    isInCooldown: false,
+    cooldownEndTime: null
 };
 
-// Store the current expiry timer
+// Store the current timers
 let expiryTimer = null;
+let cooldownTimer = null;
 
 // Listen for installation
 chrome.runtime.onInstalled.addListener(() => {
@@ -99,15 +102,79 @@ function expireIntention() {
     youtubeState.isBlocked = true;
     youtubeState.intention = '';
     youtubeState.expiryTime = null;
+    youtubeState.isInCooldown = true;
     
     // Clear timer reference
     expiryTimer = null;
     
-    chrome.storage.local.remove(['youtubeIntention', 'youtubeExpiryTime'], () => {
-        console.log('Intention expired and cleared');
+    // Get cooldown time from storage
+    chrome.storage.local.get(['youtubeCooldownTime'], (result) => {
+        const cooldownTime = result.youtubeCooldownTime || 2; // Default to 2 minutes
+        const cooldownEndTime = Date.now() + (cooldownTime * 60000);
         
-        // Pause videos in all YouTube tabs, even inactive ones
-        pauseVideosInAllTabs();
+        youtubeState.cooldownEndTime = cooldownEndTime;
+        
+        // Save cooldown end time to storage
+        chrome.storage.local.set({
+            youtubeCooldownEndTime: cooldownEndTime
+        }, () => {
+            console.log('Cooldown started, ends at:', new Date(cooldownEndTime));
+            
+            // Clear timer if exists
+            if (cooldownTimer) {
+                clearTimeout(cooldownTimer);
+            }
+            
+            // Set new cooldown timer
+            cooldownTimer = setTimeout(() => {
+                endCooldown();
+            }, cooldownTime * 60000);
+            
+            chrome.storage.local.remove(['youtubeIntention', 'youtubeExpiryTime'], () => {
+                console.log('Intention expired and cleared');
+                
+                // Pause videos in all YouTube tabs, even inactive ones
+                pauseVideosInAllTabs();
+                
+                // Notify content scripts about cooldown
+                chrome.tabs.query({url: "*://*.youtube.com/*"}, (tabs) => {
+                    if (tabs.length > 0) {
+                        tabs.forEach(tab => {
+                            chrome.tabs.sendMessage(tab.id, {
+                                action: 'intentionExpired'
+                            });
+                        });
+                    }
+                });
+            });
+        });
+    });
+}
+
+// Function to end cooldown
+function endCooldown() {
+    console.log('Cooldown ended');
+    
+    youtubeState.isInCooldown = false;
+    youtubeState.cooldownEndTime = null;
+    
+    // Clear cooldown timer
+    cooldownTimer = null;
+    
+    // Remove cooldown end time from storage
+    chrome.storage.local.remove(['youtubeCooldownEndTime'], () => {
+        console.log('Cooldown ended and cleared');
+        
+        // Notify content scripts
+        chrome.tabs.query({url: "*://*.youtube.com/*"}, (tabs) => {
+            if (tabs.length > 0) {
+                tabs.forEach(tab => {
+                    chrome.tabs.sendMessage(tab.id, {
+                        action: 'cooldownEnded'
+                    });
+                });
+            }
+        });
     });
 }
 
@@ -159,8 +226,13 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         sendResponse({success: true});
     }
     else if (request.action === 'getState') {
+        // Check if cooldown has ended but state not updated
+        if (youtubeState.isInCooldown && youtubeState.cooldownEndTime && youtubeState.cooldownEndTime < Date.now()) {
+            console.log('Cooldown ended but state not updated, ending now');
+            endCooldown();
+        }
         // Check if expiry time has passed but the timer hasn't fired yet
-        if (youtubeState.expiryTime && youtubeState.expiryTime < Date.now() && !youtubeState.isBlocked) {
+        else if (youtubeState.expiryTime && youtubeState.expiryTime < Date.now() && !youtubeState.isBlocked) {
             console.log('Expiry time passed but state not updated, expiring now');
             expireIntention();
         }

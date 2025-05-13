@@ -4,6 +4,8 @@ console.log('Content script loaded');
 // Global variables
 let blockingOverlay = null;
 let isYouTubeBlocked = true;
+let isInCooldown = false;
+let cooldownTimer = null;
 
 // Function to initialize the content script
 function initialize() {
@@ -44,6 +46,8 @@ function checkYouTubeState() {
     chrome.runtime.sendMessage({action: 'getState'}, (response) => {
         if (response) {
             isYouTubeBlocked = response.isBlocked;
+            isInCooldown = response.isInCooldown;
+            console.log(response);
             
             if (isYouTubeBlocked) {
                 // YouTube is blocked, show blocking overlay
@@ -84,6 +88,12 @@ function showBlockingOverlay() {
     // Remove existing overlay if it exists
     if (blockingOverlay) {
         blockingOverlay.remove();
+    }
+    
+    // Check if in cooldown mode
+    if (isInCooldown) {
+        showCooldownOverlay();
+        return;
     }
     
     // Create blocking overlay
@@ -137,6 +147,76 @@ function showBlockingOverlay() {
         });
     }
 
+}
+
+// Function to show cooldown overlay
+function showCooldownOverlay() {
+    // Create cooldown overlay
+    blockingOverlay = document.createElement('div');
+    blockingOverlay.className = 'fixed inset-0 bg-black bg-opacity-75 flex justify-center items-center z-[10000] p-8 transition-opacity duration-300 ease-in-out';
+    
+    // Format the remaining cooldown time
+    chrome.storage.local.get(['youtubeCooldownEndTime'], function(result) {
+        let remainingTime = '';
+        let endTime = result.youtubeCooldownEndTime || 0;
+        
+        if (endTime > Date.now()) {
+            const timeLeft = Math.ceil((endTime - Date.now()) / 1000);
+            const minutes = Math.floor(timeLeft / 60);
+            const seconds = timeLeft % 60;
+            
+            if (minutes > 0) {
+                remainingTime = `${minutes}m ${seconds}s`;
+            } else {
+                remainingTime = `${seconds}s`;
+            }
+        }
+        
+        blockingOverlay.innerHTML = `
+            <div class="bg-white rounded-2xl p-10 max-w-[550px] w-full shadow-lg flex flex-col text-center font-sans">
+                <h2 class="text-3xl font-semibold text-gray-900 mb-4">Cooldown Period</h2>
+                <p class="text-xl text-gray-600 mb-4">Your YouTube session has ended.</p>
+                <p class="text-lg text-gray-700 mb-8">Please wait before starting your next session.</p>
+                <div class="bg-gray-100 p-4 rounded-xl my-4">
+                    <p id="cooldown-timer" class="text-2xl font-bold text-blue-600">${remainingTime}</p>
+                </div>
+            </div>
+        `;
+        
+        // Add overlay to page
+        document.body.appendChild(blockingOverlay);
+        console.log('Cooldown overlay added');
+
+        // Prevent scrolling of the body
+        document.body.classList.add('overflow-hidden', 'h-full', 'w-full', 'fixed');
+        
+        // Update the timer every second
+        const timerElement = blockingOverlay.querySelector('#cooldown-timer');
+        
+        if (cooldownTimer) {
+            clearInterval(cooldownTimer);
+        }
+        
+        cooldownTimer = setInterval(() => {
+            const now = Date.now();
+            if (endTime <= now) {
+                clearInterval(cooldownTimer);
+                cooldownTimer = null;
+                isInCooldown = false;
+                return;
+            }
+            
+            const timeLeft = Math.ceil((endTime - now) / 1000);
+            const minutes = Math.floor(timeLeft / 60);
+            const seconds = timeLeft % 60;
+            
+            if (minutes > 0) {
+                timerElement.textContent = `${minutes}m ${seconds}s`;
+            } else {
+                timerElement.textContent = `${seconds}s`;
+            }
+        }, 1000);
+    });
 }
 
 // Function to submit intention
@@ -202,6 +282,7 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
         
         // Update state
         isYouTubeBlocked = false;
+        isInCooldown = false;
         
         // Remove overlay if it exists
         if (blockingOverlay) {
@@ -212,11 +293,37 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
     } else if (request.action === 'intentionExpired') {
         console.log('Intention expired');
         
-        // // Pause video before showing overlay
-        // pauseVideo();
-        
-        // Set to blocked and show overlay
+        // Start cooldown period
         isYouTubeBlocked = true;
+        isInCooldown = true;
+        
+        // Get cooldown time from storage
+        chrome.storage.local.get(['youtubeCooldownTime'], function(result) {
+            const cooldownTime = result.youtubeCooldownTime || 2; // Default to 2 minutes
+            const cooldownEndTime = Date.now() + (cooldownTime * 60000);
+            
+            // Save cooldown end time to storage
+            chrome.storage.local.set({
+                youtubeCooldownEndTime: cooldownEndTime
+            }, function() {
+                console.log('Cooldown started, ends at:', new Date(cooldownEndTime));
+                
+                // Pause video before showing overlay
+                pauseVideo();
+                
+                // Show cooldown overlay
+                showCooldownOverlay();
+            });
+        });
+        
+        sendResponse({success: true});
+    } else if (request.action === 'cooldownEnded') {
+        console.log('Cooldown ended');
+        
+        // Update state
+        isInCooldown = false;
+        
+        // Show regular blocking overlay
         showBlockingOverlay();
         
         sendResponse({success: true});
@@ -228,6 +335,7 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
         
         // Set to blocked and show overlay
         isYouTubeBlocked = true;
+        isInCooldown = false;
         showBlockingOverlay();
         
         sendResponse({success: true});
